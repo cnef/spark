@@ -31,7 +31,7 @@ ARG k8s_tests=kubernetes/tests
 RUN set -ex && \
     apt-get update && \
     ln -s /lib /lib64 && \
-    apt install -y bash tini libc6 libpam-modules libnss3 && \
+    apt install -y bash tini libc6 libpam-modules libnss3  wget unzip && \
     mkdir -p /opt/spark && \
     mkdir -p /opt/spark/work-dir && \
     touch /opt/spark/RELEASE && \
@@ -42,14 +42,22 @@ RUN set -ex && \
     rm -rf /var/cache/apt/*
 
 COPY ${spark_jars} /opt/spark/jars
+RUN rm -rf /opt/spark/jars/kubernetes-* && \
+    wget --quiet http://apache.mirrors.hoobly.com/incubator/livy/0.7.0-incubating/apache-livy-0.7.0-incubating-bin.zip -O /opt/livy.zip && \
+    cd /opt/ && unzip /opt/livy.zip && \
+    ln -s /opt/apache-livy* /opt/livy && \
+    rm -rf /opt/livy.zip
 COPY bin /opt/spark/bin
 COPY sbin /opt/spark/sbin
 COPY ${img_path}/spark/entrypoint.sh /opt/
 COPY examples /opt/spark/examples
 COPY ${k8s_tests} /opt/spark/tests
 COPY data /opt/spark/data
+COPY extra-jars/*.jar /opt/spark/jars/
+COPY spark-rest-0.14 /opt/spark-rest
 
 ENV SPARK_HOME /opt/spark
+ENV SPARK_EXTRA_CLASSPATH  /nfs/jars/*
 
 WORKDIR /opt/spark/work-dir
 
