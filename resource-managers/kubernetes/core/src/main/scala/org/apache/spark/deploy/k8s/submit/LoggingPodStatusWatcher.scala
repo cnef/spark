@@ -23,13 +23,18 @@ import scala.collection.JavaConverters._
 import io.fabric8.kubernetes.api.model.{ContainerStateRunning, ContainerStateTerminated, ContainerStateWaiting, ContainerStatus, Pod}
 import io.fabric8.kubernetes.client.{KubernetesClientException, Watcher}
 import io.fabric8.kubernetes.client.Watcher.Action
+import java.net.HttpURLConnection.HTTP_GONE
 
+import org.apache.spark.deploy.k8s.Config._
+import org.apache.spark.deploy.k8s.{KubernetesConf, KubernetesDriverSpecificConf}
+import org.apache.spark.deploy.k8s.KubernetesUtils._
 import org.apache.spark.SparkException
 import org.apache.spark.internal.Logging
 import org.apache.spark.util.ThreadUtils
 
 private[k8s] trait LoggingPodStatusWatcher extends Watcher[Pod] {
-  def awaitCompletion(): Unit
+  def watchOrStop(submissionId: String): Boolean
+  def reset(): Unit
 }
 
 /**
@@ -41,6 +46,7 @@ private[k8s] trait LoggingPodStatusWatcher extends Watcher[Pod] {
  *                             number.
  */
 private[k8s] class LoggingPodStatusWatcherImpl(
+    conf: KubernetesConf[KubernetesDriverSpecificConf],
     appId: String,
     maybeLoggingInterval: Option[Long])
   extends LoggingPodStatusWatcher with Logging {
@@ -53,10 +59,16 @@ private[k8s] class LoggingPodStatusWatcherImpl(
     override def run() = logShortStatus()
   }
 
+  private var podCompleted = false
+  private var resourceTooOldReceived = false
   private var pod = Option.empty[Pod]
 
   private def phase: String = pod.map(_.getStatus.getPhase).getOrElse("unknown")
 
+  override def reset(): Unit = {
+    resourceTooOldReceived = false
+  }
+  
   def start(): Unit = {
     maybeLoggingInterval.foreach { interval =>
       scheduler.scheduleAtFixedRate(logRunnable, 0, interval, TimeUnit.MILLISECONDS)
@@ -79,7 +91,12 @@ private[k8s] class LoggingPodStatusWatcherImpl(
 
   override def onClose(e: KubernetesClientException): Unit = {
     logDebug(s"Stopping watching application $appId with last-observed phase $phase")
-    closeWatch()
+    if(e != null && e.getCode == HTTP_GONE) {
+      resourceTooOldReceived = true
+      logDebug(s"Got HTTP Gone code, resource version changed in k8s api: $e")
+    } else {
+      closeWatch()
+    }
   }
 
   private def logShortStatus() = {
@@ -134,11 +151,27 @@ private[k8s] class LoggingPodStatusWatcherImpl(
     }.mkString("")
   }
 
-  override def awaitCompletion(): Unit = {
-    podCompletedFuture.await()
-    logInfo(pod.map { p =>
-      s"Container final statuses:\n\n${containersDescription(p)}"
-    }.getOrElse("No containers were found in the driver pod."))
+  override def watchOrStop(sId: String): Boolean = if (conf.get(WAIT_FOR_APP_COMPLETION)) {
+    logInfo(s"Waiting for application ${conf.roleSpecificConf.appName} with submission ID $sId to finish...")
+    val interval = conf.get(REPORT_INTERVAL)
+    synchronized {
+      while (!podCompleted && !resourceTooOldReceived) {
+        wait(interval)
+        logInfo(s"Application status for $appId (phase: $phase)")
+      }
+    }
+
+    if(podCompleted) {
+      logInfo(
+        pod.map { p => s"Container final statuses:\n\n${containersDescription(p)}" }
+          .getOrElse("No containers were found in the driver pod."))
+      logInfo(s"Application ${conf.roleSpecificConf.appName} with submission ID $sId finished")
+    }
+    podCompleted
+  } else {
+    logInfo(s"Deployed Spark application ${conf.roleSpecificConf.appName} with submission ID $sId into Kubernetes")
+    // Always act like the application has completed since we don't want to wait for app completion
+    true
   }
 
   private def containersDescription(p: Pod): String = {
