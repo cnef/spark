@@ -51,10 +51,6 @@ private[k8s] class LoggingPodStatusWatcherImpl(
     maybeLoggingInterval: Option[Long])
   extends LoggingPodStatusWatcher with Logging {
 
-  private val podCompletedFuture = new CountDownLatch(1)
-  // start timer for periodic logging
-  private val scheduler =
-    ThreadUtils.newDaemonSingleThreadScheduledExecutor("logging-pod-status-watcher")
   private val logRunnable: Runnable = new Runnable {
     override def run() = logShortStatus()
   }
@@ -67,12 +63,6 @@ private[k8s] class LoggingPodStatusWatcherImpl(
 
   override def reset(): Unit = {
     resourceTooOldReceived = false
-  }
-  
-  def start(): Unit = {
-    maybeLoggingInterval.foreach { interval =>
-      scheduler.scheduleAtFixedRate(logRunnable, 0, interval, TimeUnit.MILLISECONDS)
-    }
   }
 
   override def eventReceived(action: Action, pod: Pod): Unit = {
@@ -111,9 +101,9 @@ private[k8s] class LoggingPodStatusWatcherImpl(
     phase == "Succeeded" || phase == "Failed"
   }
 
-  private def closeWatch(): Unit = {
-    podCompletedFuture.countDown()
-    scheduler.shutdown()
+  private def closeWatch(): Unit = synchronized {
+    podCompleted = true
+    this.notifyAll()
   }
 
   private def formatPodState(pod: Pod): String = {
