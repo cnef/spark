@@ -39,37 +39,37 @@ private[spark] class LocalDirsFeatureStep(
     var localDirVolumes : Seq[Volume] = Seq()
     var localDirVolumeMounts : Seq[VolumeMount] = Seq()
 
-    if (localDirs.isEmpty) {
-      // Cannot use Utils.getConfiguredLocalDirs because that will default to the Java system
-      // property - we want to instead default to mounting an emptydir volume that doesn't already
-      // exist in the image.
-      // We could make utils.getConfiguredLocalDirs opinionated about Kubernetes, as it is already
-      // a bit opinionated about YARN and Mesos.
-      val resolvedLocalDirs = Option(conf.sparkConf.getenv("SPARK_LOCAL_DIRS"))
-        .orElse(conf.getOption("spark.local.dir"))
-        .getOrElse(defaultLocalDir)
-        .split(",")
-      localDirs = resolvedLocalDirs.toBuffer
-      localDirVolumes = resolvedLocalDirs
-        .zipWithIndex
-        .map { case (_, index) =>
-          new VolumeBuilder()
-            .withName(s"spark-local-dir-${index + 1}")
-            .withNewEmptyDir()
-              .withMedium(if (useLocalDirTmpFs) "Memory" else null)
-            .endEmptyDir()
-            .build()
-        }
+    // if (localDirs.isEmpty) {
+    //   // Cannot use Utils.getConfiguredLocalDirs because that will default to the Java system
+    //   // property - we want to instead default to mounting an emptydir volume that doesn't already
+    //   // exist in the image.
+    //   // We could make utils.getConfiguredLocalDirs opinionated about Kubernetes, as it is already
+    //   // a bit opinionated about YARN and Mesos.
+    //   val resolvedLocalDirs = Option(conf.sparkConf.getenv("SPARK_LOCAL_DIRS"))
+    //     .orElse(conf.getOption("spark.local.dir"))
+    //     .getOrElse(defaultLocalDir)
+    //     .split(",")
+    //   localDirs = resolvedLocalDirs.toBuffer
+    //   localDirVolumes = resolvedLocalDirs
+    //     .zipWithIndex
+    //     .map { case (_, index) =>
+    //       new VolumeBuilder()
+    //         .withName(s"spark-local-dir-${index + 1}")
+    //         .withNewEmptyDir()
+    //           .withMedium(if (useLocalDirTmpFs) "Memory" else null)
+    //         .endEmptyDir()
+    //         .build()
+    //     }
 
-      localDirVolumeMounts = localDirVolumes
-        .zip(resolvedLocalDirs)
-        .map { case (localDirVolume, localDirPath) =>
-          new VolumeMountBuilder()
-            .withName(localDirVolume.getName)
-            .withMountPath(localDirPath)
-            .build()
-          }
-    }
+    //   localDirVolumeMounts = localDirVolumes
+    //     .zip(resolvedLocalDirs)
+    //     .map { case (localDirVolume, localDirPath) =>
+    //       new VolumeMountBuilder()
+    //         .withName(localDirVolume.getName)
+    //         .withMountPath(localDirPath)
+    //         .build()
+    //       }
+    // }
 
     val podWithLocalDirVolumes = new PodBuilder(pod.pod)
       .editSpec()

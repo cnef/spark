@@ -29,7 +29,8 @@ RUN apt-get update && \
     apt install -y python3 python3-pip && \
     # We remove ensurepip since it adds no functionality since pip is
     # installed on the image and it just takes up 1.6MB on the image
-    pip install --upgrade pip setuptools && \
+    ln -s /usr/bin/python3 /usr/bin/python && \
+    python -m pip install --upgrade pip setuptools && \
     python -m pip install six numpy cython && \
     python -m pip install pandas && \
     python -m pip install pyarrow==0.14.1 && \
