@@ -95,7 +95,7 @@ private[k8s] class LoggingPodStatusWatcherImpl(conf: KubernetesDriverConf)
     logInfo(s"Waiting for application ${conf.appName} with submission ID $sId to finish...")
     val interval = conf.get(REPORT_INTERVAL)
     synchronized {
-      while (!podCompleted && !resourceTooOldReceived) { {
+      while (!podCompleted && !resourceTooOldReceived) {
         wait(interval)
         logInfo(s"Application status for $appId (phase: $phase)")
       }
