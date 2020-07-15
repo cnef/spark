@@ -93,6 +93,13 @@ function create_dev_build_context {(
   cp -r "resource-managers/kubernetes/docker/src/main/dockerfiles" \
     "$BASE_CTX/kubernetes/dockerfiles"
 
+  if [ -d extra-jars ]; then 
+    cp -r extra-jars ${BASE_CTX}/ 
+  fi 
+  if [ -f spark-rest ]; then 
+    cp spark-rest ${BASE_CTX}/
+  fi 
+  
   cp -r "assembly/target/scala-$SPARK_SCALA_VERSION/jars" "$BASE_CTX/jars"
   cp -r "resource-managers/kubernetes/integration-tests/tests" \
     "$BASE_CTX/kubernetes/tests"
