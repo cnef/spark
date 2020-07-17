@@ -23,7 +23,7 @@ WORKDIR /
 # Reset to root to run installation tasks
 USER 0
 
-RUN mkdir ${SPARK_HOME}/python
+RUN mkdir -p ${SPARK_HOME}/python /opt/spark/work-dir/string/
 # TODO: Investigate running both pip and pip3 via virtualenvs
 RUN apt-get update && \
     apt install -y python3 python3-pip && \
