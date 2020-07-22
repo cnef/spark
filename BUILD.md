@@ -11,7 +11,7 @@
 [build spark](https://spark.apache.org/docs/latest/building-spark.html)
 
 ```shell
-# docker run -it --rm -e MAVEN_OPTS="-Xmx16g -XX:ReservedCodeCacheSize=2g" -w /root/spark -v sparksource:/root/spark build-spark -3
+# docker run -it --rm -e MAVEN_OPTS="-Xmx16g -XX:ReservedCodeCacheSize=2g" -w /root/spark -v sparksource:/root/spark build-spark-3
 # time ./dev/make-distribution.sh --name custom-spark-3 --pip --tgz -Psparkr -Phadoop-2.7 -Phive -Phive-thriftserver -Pmesos -Pyarn -Pkubernetes
 ```
 
