@@ -77,11 +77,3 @@ RUN apt-get clean && apt-get update && $APT_INSTALL gnupg ca-certificates && \
   # Install tools needed to build the documentation.
   $APT_INSTALL ruby2.5 ruby2.5-dev && \
   gem install --no-document $GEM_PKGS
-
-WORKDIR /opt/spark-rm/output
-
-ARG UID
-RUN useradd -m -s /bin/bash -p spark-rm -u $UID spark-rm
-USER spark-rm:spark-rm
-
-ENTRYPOINT [ "/opt/spark-rm/do-release.sh" ]
