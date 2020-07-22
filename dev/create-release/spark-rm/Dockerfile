@@ -81,11 +81,3 @@ RUN apt-get clean && apt-get update && $APT_INSTALL gnupg ca-certificates apt-tr
   gem install jekyll --no-rdoc --no-ri -v 3.8.6 && \
   gem install jekyll-redirect-from -v 0.15.0 && \
   gem install pygments.rb
-
-WORKDIR /opt/spark-rm/output
-
-ARG UID
-RUN useradd -m -s /bin/bash -p spark-rm -u $UID spark-rm
-USER spark-rm:spark-rm
-
-ENTRYPOINT [ "/opt/spark-rm/do-release.sh" ]
